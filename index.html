@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>선박 데이터 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e17;--bg2:#111827;--bg3:#1a2233;
+  --bdr:rgba(99,170,255,0.12);--bdr2:rgba(99,170,255,0.22);
+  --acc:#3b82f6;--acc2:#60a5fa;--acc3:#93c5fd;
+  --teal:#14b8a6;--amb:#f59e0b;--coral:#f97316;--grn:#22c55e;--purp:#a78bfa;
+  --tx:#e2e8f0;--tx2:#94a3b8;--tx3:#64748b;
+  --font:'IBM Plex Sans KR',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+body{background:var(--bg);color:var(--tx);font-family:var(--font);font-size:14px;min-height:100vh}
+
+/* Header */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--bdr);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:12px}
+.li{width:32px;height:32px;background:var(--acc);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.li svg{width:18px;height:18px;fill:white}
+.ht{font-size:16px;font-weight:500}
+.hs{font-size:11px;color:var(--tx3);font-family:var(--mono);margin-top:1px}
+.hbadge{background:var(--bg3);border:1px solid var(--bdr);padding:5px 10px;border-radius:5px;font-size:11px;color:var(--tx2);font-family:var(--mono)}
+
+/* Group nav */
+.gnav{background:var(--bg2);border-bottom:1px solid var(--bdr);padding:0 28px;display:flex;gap:0;overflow-x:auto}
+.gnav::-webkit-scrollbar{height:3px}.gnav::-webkit-scrollbar-track{background:transparent}.gnav::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+.gtab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--tx3);padding:12px 16px;font-size:13px;font-family:var(--font);cursor:pointer;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:6px}
+.gtab:hover{color:var(--tx2)}
+.gtab.active{color:var(--acc2);border-bottom-color:var(--acc2)}
+.gcnt{font-size:10px;font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:10px}
+
+/* Main */
+.main{padding:20px 28px}
+
+/* Progress */
+#prog{display:none;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:14px 18px;margin-bottom:16px;align-items:center;gap:14px}
+.prog-txt{font-size:12px;color:var(--tx2);font-family:var(--mono);white-space:nowrap}
+.prog-track{flex:1;background:var(--bg3);border-radius:4px;height:5px;overflow:hidden}
+.prog-fill{background:var(--acc);height:100%;border-radius:4px;transition:width .3s;width:0%}
+
+/* Filters */
+.fbar{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:18px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fl{font-size:10px;color:var(--tx3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px}
+select,input[type=text]{background:var(--bg3);border:1px solid var(--bdr);color:var(--tx);padding:6px 9px;border-radius:6px;font-size:12px;font-family:var(--font);outline:none;min-width:120px}
+select:focus,input:focus{border-color:var(--acc2)}
+input[type=text]{min-width:170px}
+input::placeholder{color:var(--tx3)}
+.breset{background:transparent;border:1px solid var(--bdr2);color:var(--tx2);padding:6px 12px;border-radius:6px;font-size:12px;font-family:var(--font);cursor:pointer;align-self:flex-end;transition:all .15s}
+.breset:hover{border-color:var(--acc2);color:var(--acc2)}
+
+/* Stats */
+.srow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.sc{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.sc.cb::after{background:var(--acc)}.sc.ct::after{background:var(--teal)}.sc.ca::after{background:var(--amb)}.sc.cg::after{background:var(--grn)}
+.sl{font-size:10px;color:var(--tx3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.sv{font-size:24px;font-weight:300;letter-spacing:-1px}
+.ss{font-size:11px;color:var(--tx3);margin-top:2px}
+
+/* Charts */
+.cgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px}
+.cc{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:16px}
+.ctitle{font-size:11px;font-weight:500;color:var(--tx2);font-family:var(--mono);margin-bottom:12px}
+.cw{position:relative;width:100%;height:210px}
+
+/* Table */
+.tc{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.thead{padding:12px 16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between}
+.tt{font-size:11px;font-weight:500;color:var(--tx2);font-family:var(--mono)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--bg3);padding:8px 11px;text-align:left;font-size:10px;color:var(--tx3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--bdr);transition:background .1s}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:8px 11px;color:var(--tx);white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.tm{font-family:var(--mono);font-size:11px;color:var(--tx2)}
+.bl{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-family:var(--mono)}
+.b1{background:rgba(59,130,246,.15);color:var(--acc2)}
+.b2{background:rgba(20,184,166,.15);color:var(--teal)}
+.b3{background:rgba(245,158,11,.15);color:var(--amb)}
+
+/* Pagination */
+.pgn{display:flex;align-items:center;gap:5px;padding:10px 16px;border-top:1px solid var(--bdr);justify-content:flex-end;flex-wrap:wrap}
+.pb{background:var(--bg3);border:1px solid var(--bdr);color:var(--tx2);width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;transition:all .12s;font-family:var(--mono)}
+.pb:hover{border-color:var(--acc2);color:var(--acc2)}
+.pb.active{background:var(--acc);border-color:var(--acc);color:white}
+.pb:disabled{opacity:.3;cursor:not-allowed}
+.pi{font-size:11px;color:var(--tx3);font-family:var(--mono);margin:0 4px}
+
+@media(max-width:768px){.srow{grid-template-columns:repeat(2,1fr)}.cgrid{grid-template-columns:1fr}.main{padding:14px 16px}.gnav{padding:0 16px}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">
+    <div class="li"><svg viewBox="0 0 24 24"><path d="M3 17l4-8 4 4 3-6 4 10H3z"/></svg></div>
+    <div>
+      <div class="ht">선박 데이터 대시보드</div>
+      <div class="hs" id="hs">vessels.parquet · 120,305 rows</div>
+    </div>
+  </div>
+  <span class="hbadge" id="hbadge">—</span>
+</header>
+
+<!-- Group nav tabs -->
+<nav class="gnav" id="gnav">
+  <button class="gtab" data-grp="__all__">
+    전체 <span class="gcnt">120,305</span>
+  </button>
+</nav>
+
+<div class="main">
+  <!-- Progress -->
+  <div id="prog">
+    <span class="prog-txt" id="prog-txt">로딩 중...</span>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="fbar">
+    <div class="fg"><div class="fl">카테고리</div><select id="f-cat"><option value="">전체</option></select></div>
+    <div class="fg"><div class="fl">선적항</div><select id="f-port"><option value="">전체</option></select></div>
+    <div class="fg"><div class="fl">선체 재질</div><select id="f-hull"><option value="">전체</option></select></div>
+    <div class="fg"><div class="fl">건조 연도 이후</div><select id="f-year"><option value="">전체</option></select></div>
+    <div class="fg"><div class="fl">선박명 / IMO</div><input type="text" id="f-q" placeholder="검색..."></div>
+    <button class="breset" id="btn-reset">초기화</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="srow">
+    <div class="sc cb"><div class="sl">선박 수</div><div class="sv" id="s-cnt">—</div><div class="ss" id="s-cnt-s"></div></div>
+    <div class="sc ct"><div class="sl">선박 종류</div><div class="sv" id="s-typ">—</div><div class="ss">고유 vessel_type 수</div></div>
+    <div class="sc ca"><div class="sl">평균 총톤수</div><div class="sv" id="s-ton">—</div><div class="ss">gross_tonnage</div></div>
+    <div class="sc cg"><div class="sl">건조 연도</div><div class="sv" id="s-yr">—</div><div class="ss" id="s-yr-s"></div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="cgrid">
+    <div class="cc"><div class="ctitle">건조 연도별 추이</div><div class="cw"><canvas id="c-year" role="img" aria-label="건조 연도별 선박 수"></canvas></div></div>
+    <div class="cc"><div class="ctitle">선체 재질 분포</div><div class="cw"><canvas id="c-hull" role="img" aria-label="선체 재질 도넛"></canvas></div></div>
+    <div class="cc"><div class="ctitle">카테고리별 현황</div><div class="cw"><canvas id="c-cat" role="img" aria-label="카테고리별 막대"></canvas></div></div>
+    <div class="cc"><div class="ctitle">선적항 TOP 12</div><div class="cw"><canvas id="c-port" role="img" aria-label="선적항 상위"></canvas></div></div>
+  </div>
+
+  <!-- Table -->
+  <div class="tc">
+    <div class="thead">
+      <span class="tt">선박 목록</span>
+      <span class="tt" id="tbl-n">—</span>
+    </div>
+    <div class="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+    <div class="pgn" id="pgn"></div>
+  </div>
+</div>
+
+<script>
+const MANIFEST = [{"group": "Barge", "count": 15244, "files": ["Barge.json"]}, {"group": "Boat", "count": 73326, "files": ["Boat_0.json", "Boat_1.json"]}, {"group": "Ferry", "count": 7204, "files": ["Ferry.json"]}, {"group": "Cargo", "count": 21718, "files": ["Cargo.json"]}, {"group": "Tanker", "count": 1252, "files": ["Tanker.json"]}, {"group": "Offshore / Special", "count": 731, "files": ["Offshore___Special.json"]}, {"group": "Yacht / Leisure", "count": 523, "files": ["Yacht___Leisure.json"]}, {"group": "기타", "count": 307, "files": ["기타.json"]}];
+
+// HTML 파일 위치 기준으로 data/ 경로를 동적으로 결정 (GitHub Pages 서브폴더 대응)
+const BASE = (function() {
+  const p = location.pathname.replace(/\/[^/]*$/, '/');
+  return p + 'data/';
+})();
+
+const COLS = [
+  {k:'vessel_name',l:'선박명'},{k:'imo_number',l:'IMO'},
+  {k:'vessel_type',l:'종류'},{k:'category',l:'카테고리'},
+  {k:'built_year',l:'건조'},{k:'gross_tonnage',l:'총톤수'},
+  {k:'net_tonnage',l:'순톤수'},{k:'hull_material',l:'선체'},
+  {k:'registry_port',l:'선적항'},{k:'flag_state',l:'국적'},
+  {k:'engine_power_hp',l:'마력(HP)'},{k:'length',l:'길이'},
+  {k:'owner_city',l:'소유자 도시'},{k:'main_propulsion',l:'추진방식'},
+];
+const CLR=['#3b82f6','#14b8a6','#f59e0b','#f97316','#a78bfa','#22c55e','#e11d48','#06b6d4','#84cc16','#8b5cf6','#f43f5e','#0ea5e9'];
+
+let loaded = {};   // 캐시: filename → rows[]
+let curData = [];
+let filtered = [];
+let curGrp = '__all__';
+let charts = {};
+let page = 1;
+const PG = 100;
+
+// ── 탭 생성 ────────────────────────────────────────
+(function(){
+  const nav = document.getElementById('gnav');
+  MANIFEST.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'gtab';
+    btn.dataset.grp = g.group;
+    btn.onclick = () => selectGroup(g.group);
+    btn.innerHTML = g.group + ' <span class="gcnt">' + g.count.toLocaleString() + '</span>';
+    nav.appendChild(btn);
+  });
+})();
+
+// ── 탭 선택 → 해당 그룹만 로드 (lazy) ─────────────
+async function selectGroup(grp) {
+  if (curGrp === grp) return;  // 같은 탭 재클릭 무시
+  curGrp = grp;
+  document.querySelectorAll('.gtab').forEach(b => b.classList.toggle('active', b.dataset.grp === grp));
+  resetFilters();
+  await loadGroup(grp);
+}
+
+async function loadGroup(grp) {
+  // 파일 목록 수집
+  let filesToLoad = [];
+  if (grp === '__all__') {
+    MANIFEST.forEach(g => g.files.forEach(f => filesToLoad.push({label: g.group, file: f})));
+  } else {
+    const meta = MANIFEST.find(x => x.group === grp);
+    if (!meta) return;
+    meta.files.forEach(f => filesToLoad.push({label: grp, file: f}));
+  }
+
+  // 이미 캐시된 파일 분리
+  const toFetch = filesToLoad.filter(x => !loaded[x.file]);
+  const cached  = filesToLoad.filter(x =>  loaded[x.file]);
+
+  if (toFetch.length === 0) {
+    // 전부 캐시 → 즉시 렌더
+    curData = filesToLoad.flatMap(x => loaded[x.file]);
+    document.getElementById('hbadge').textContent = curData.length.toLocaleString() + ' rows';
+    initFilters(); applyFilters();
+    return;
+  }
+
+  showProg(true, `0 / ${toFetch.length} 파일 로드 중...`);
+  let done = 0;
+
+  // 병렬 fetch (Promise.all)
+  await Promise.all(toFetch.map(async ({label, file}) => {
+    const resp = await fetch(BASE + file);
+    if (!resp.ok) throw new Error('404: ' + BASE + file);
+    const p = await resp.json();
+    loaded[file] = p.rows;
+    done++;
+    setProg(Math.round(done / toFetch.length * 100),
+      `${done} / ${toFetch.length} 파일 완료 (${label})`);
+  }));
+
+  showProg(false);
+  curData = filesToLoad.flatMap(x => loaded[x.file]);
+  document.getElementById('hbadge').textContent = curData.length.toLocaleString() + ' rows';
+  initFilters();
+  applyFilters();
+}
+
+function showProg(v, txt) {
+  const el = document.getElementById('prog');
+  el.style.display = v ? 'flex' : 'none';
+  if (txt) document.getElementById('prog-txt').textContent = txt;
+}
+function setProg(pct, txt) {
+  document.getElementById('prog-fill').style.width = pct + '%';
+  if (txt) document.getElementById('prog-txt').textContent = txt;
+}
+
+// Filters
+function getUniq(key) {
+  const s = new Set();
+  curData.forEach(r => { if (r[key]) s.add(String(r[key])); });
+  return [...s].sort();
+}
+function popSel(id, items) {
+  const el = document.getElementById(id);
+  el.innerHTML = '<option value="">전체</option>';
+  items.forEach(v => el.innerHTML += `<option value="${v}">${v}</option>`);
+}
+function initFilters() {
+  popSel('f-cat',  getUniq('category'));
+  popSel('f-port', getUniq('registry_port'));
+  popSel('f-hull', getUniq('hull_material'));
+  const yrs = getUniq('built_year').filter(y => y && !isNaN(y)).sort((a,b)=>+a-+b);
+  const sel = document.getElementById('f-year');
+  sel.innerHTML = '<option value="">전체</option>';
+  yrs.forEach(y => sel.innerHTML += `<option value="${y}">${y}년 이후</option>`);
+}
+['f-cat','f-port','f-hull','f-year'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+document.getElementById('f-q').addEventListener('input', debounce(applyFilters, 180));
+document.getElementById('btn-reset').addEventListener('click', resetFilters);
+function resetFilters() {
+  ['f-cat','f-port','f-hull','f-year'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-q').value = '';
+}
+
+function applyFilters() {
+  const cat  = document.getElementById('f-cat').value;
+  const port = document.getElementById('f-port').value;
+  const hull = document.getElementById('f-hull').value;
+  const yr   = document.getElementById('f-year').value;
+  const q    = document.getElementById('f-q').value.toLowerCase().trim();
+  filtered = curData.filter(r => {
+    if (cat  && r.category      !== cat)  return false;
+    if (port && r.registry_port !== port) return false;
+    if (hull && r.hull_material !== hull) return false;
+    if (yr   && Number(r.built_year) < Number(yr)) return false;
+    if (q) {
+      if (!String(r.vessel_name||'').toLowerCase().includes(q) &&
+          !String(r.imo_number||'').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  page = 1;
+  renderAll();
+}
+
+function renderAll() { renderStats(); renderCharts(); renderTable(); }
+
+function renderStats() {
+  const rows = filtered;
+  document.getElementById('s-cnt').textContent = rows.length.toLocaleString();
+  document.getElementById('s-cnt-s').textContent = '전체 ' + curData.length.toLocaleString() + '척 중';
+  const types = new Set(rows.map(r=>r.vessel_type).filter(Boolean));
+  document.getElementById('s-typ').textContent = types.size;
+  const tons = rows.map(r=>parseFloat(r.gross_tonnage)).filter(v=>v>0&&!isNaN(v));
+  const avg = tons.length ? tons.reduce((a,b)=>a+b,0)/tons.length : 0;
+  document.getElementById('s-ton').textContent = avg>=1000?(avg/1000).toFixed(1)+'k':Math.round(avg).toLocaleString();
+  const yrs = rows.map(r=>parseInt(r.built_year)).filter(v=>v>1800&&v<=2030&&!isNaN(v));
+  document.getElementById('s-yr').textContent = yrs.length ? Math.max(...yrs) : '—';
+  document.getElementById('s-yr-s').textContent = yrs.length ? Math.min(...yrs)+' ~ '+Math.max(...yrs) : '';
+}
+
+function cntBy(rows, key, lim=12) {
+  const c={};
+  rows.forEach(r=>{ const v=r[key]||'미상'; c[v]=(c[v]||0)+1; });
+  return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,lim);
+}
+
+function renderCharts() {
+  const yc={};
+  filtered.forEach(r=>{ const y=parseInt(r.built_year); if(y>1900&&y<=2030) yc[y]=(yc[y]||0)+1; });
+  const yks=Object.keys(yc).sort();
+  mkLine('c-year', yks, yks.map(y=>yc[y]));
+
+  const h=cntBy(filtered,'hull_material',8);
+  mkDonut('c-hull', h.map(x=>x[0]), h.map(x=>x[1]));
+
+  const c=cntBy(filtered,'category',12);
+  mkHBar('c-cat', c.map(x=>x[0]), c.map(x=>x[1]));
+
+  const p=cntBy(filtered,'registry_port',12);
+  mkHBar('c-port', p.map(x=>x[0]), p.map(x=>x[1]));
+}
+
+function dst(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+const bo = { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} };
+
+function mkLine(id,labels,data){
+  dst(id);
+  charts[id]=new Chart(document.getElementById(id),{type:'line',data:{labels,datasets:[{data,borderColor:'#14b8a6',backgroundColor:'rgba(20,184,166,.08)',borderWidth:2,pointRadius:data.length>60?0:3,fill:true,tension:.35}]},options:{...bo,scales:{x:{ticks:{color:'#64748b',font:{size:10},autoSkip:true,maxTicksLimit:14},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'},border:{display:false}}}}});
+}
+function mkDonut(id,labels,data){
+  dst(id);
+  charts[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:CLR.map(c=>c+'cc'),borderColor:'#111827',borderWidth:2}]},options:{...bo,plugins:{legend:{display:true,position:'right',labels:{color:'#94a3b8',font:{size:10},boxWidth:10,padding:8}}},cutout:'58%'}});
+}
+function mkHBar(id,labels,data){
+  dst(id);
+  const h=Math.max(labels.length*34+60,180);
+  document.getElementById(id).parentElement.style.height=h+'px';
+  charts[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{data,backgroundColor:CLR.map(c=>c+'bb'),borderColor:CLR,borderWidth:1,borderRadius:3}]},options:{...bo,indexAxis:'y',scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'},border:{display:false}},y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{display:false}}}}});
+}
+
+// Table
+function renderTable(){
+  const tot=filtered.length, tp=Math.max(1,Math.ceil(tot/PG));
+  page=Math.min(page,tp);
+  const sl=filtered.slice((page-1)*PG, page*PG);
+  document.getElementById('tbl-n').textContent=tot.toLocaleString()+' 건';
+  document.getElementById('th').innerHTML='<tr>'+COLS.map(c=>`<th>${c.l}</th>`).join('')+'</tr>';
+  if(!sl.length){
+    document.getElementById('tb').innerHTML=`<tr><td colspan="${COLS.length}" style="text-align:center;padding:28px;color:var(--tx3)">검색 결과 없음</td></tr>`;
+  } else {
+    document.getElementById('tb').innerHTML=sl.map(row=>'<tr>'+COLS.map(col=>{
+      let v=row[col.k]; if(v===null||v===undefined||v==='')v='—';
+      if(col.k==='vessel_type') return `<td><span class="bl b1">${v}</span></td>`;
+      if(col.k==='hull_material') return `<td><span class="bl b3">${v}</span></td>`;
+      if(['imo_number','gross_tonnage','built_year','engine_power_hp'].includes(col.k))
+        return `<td class="tm">${v!=='—'?Number(v).toLocaleString():'—'}</td>`;
+      return `<td title="${v}">${v}</td>`;
+    }).join('')+'</tr>').join('');
+  }
+  renderPgn(page,tp,tot);
+}
+
+function renderPgn(cur,tot,rows){
+  const pg=document.getElementById('pgn');
+  if(tot<=1){pg.innerHTML='';return;}
+  let h=`<button class="pb" onclick="gp(${cur-1})" ${cur===1?'disabled':''}>&#8592;</button>`;
+  const rng=[];
+  for(let i=Math.max(1,cur-2);i<=Math.min(tot,cur+2);i++) rng.push(i);
+  if(rng[0]>1){h+=`<button class="pb" onclick="gp(1)">1</button>`;if(rng[0]>2)h+=`<span class="pi">…</span>`;}
+  rng.forEach(p=>h+=`<button class="pb ${p===cur?'active':''}" onclick="gp(${p})">${p}</button>`);
+  if(rng[rng.length-1]<tot){if(rng[rng.length-1]<tot-1)h+=`<span class="pi">…</span>`;h+=`<button class="pb" onclick="gp(${tot})">${tot}</button>`;}
+  h+=`<button class="pb" onclick="gp(${cur+1})" ${cur===tot?'disabled':''}>&#8594;</button>`;
+  h+=`<span class="pi">${((cur-1)*PG+1).toLocaleString()}–${Math.min(cur*PG,rows).toLocaleString()} / ${rows.toLocaleString()}</span>`;
+  pg.innerHTML=h;
+}
+window.gp=function(p){ const t=Math.ceil(filtered.length/PG); if(p<1||p>t)return; page=p; renderTable(); document.querySelector('.tc').scrollIntoView({behavior:'smooth',block:'start'}); };
+
+function debounce(fn,d){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),d);};}
+
+// 첫 로드: 첫 번째 그룹만 (전체 탭은 클릭 시 로드)
+// 전체 탭 클릭 시 curGrp 초기화해서 재로드 허용
+document.querySelector('.gtab[data-grp="__all__"]').onclick = () => {
+  curGrp = null;
+  selectGroup('__all__');
+};
+if (MANIFEST.length > 0) {
+  selectGroup(MANIFEST[0].group);
+}
+</script>
+</body>
+</html>
